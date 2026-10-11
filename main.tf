@@ -76,7 +76,7 @@ module "ecs_cluster" {
 
   # The "services" map manages both apps globally under one definition block
   services = {
-    
+
     # ----------------------------------------
     # Service 1: FlaskApp-S3
     # ----------------------------------------
@@ -91,7 +91,7 @@ module "ecs_cluster" {
           memory    = 512
           essential = true
           image     = "255945442255.dkr.ecr.us-east-1.amazonaws.com/coaching-18-flask-private-repository:flask2s3-698a8f0cedc2104ed12d958621b0fe5a0af0c498" # Replaced dynamically via app pipeline
-                        
+
           port_mappings = [
             {
               name          = "s3-port"
@@ -109,7 +109,7 @@ module "ecs_cluster" {
               "awslogs-stream-prefix" = "flaskapp-s3"
             }
           }
-  
+
           # Pass the variables provisioned directly above in main.tf
           environment = [
             {
@@ -125,7 +125,7 @@ module "ecs_cluster" {
       }
 
       # Networking Profiles
-      subnet_ids = ["subnet-00b4c98869b996d86", "subnet-07fe08d5909e677db"] # Replace with your real VPC Subnets
+      subnet_ids       = ["subnet-00b4c98869b996d86", "subnet-07fe08d5909e677db"] # Replace with your real VPC Subnets
       assign_public_ip = true
 
       # FIXED: Define the security group rules natively for this service
@@ -162,7 +162,7 @@ module "ecs_cluster" {
           memory    = 512
           essential = true
           image     = "255945442255.dkr.ecr.us-east-1.amazonaws.com/coaching-18-flask-private-repository:flask2sqs-latest" # Replaced dynamically via app pipeline
-          
+
           port_mappings = [
             {
               name          = "sqs-port"
@@ -171,14 +171,14 @@ module "ecs_cluster" {
               protocol      = "tcp"
             }
           ]
-            log_configuration = {
-                logDriver = "awslogs"
-                options = {
-                "awslogs-group"         = aws_cloudwatch_log_group.ecs_logs.name
-                "awslogs-region"        = var.aws_region
-                "awslogs-stream-prefix" = "flaskapp-sqs"
-                }
+          log_configuration = {
+            logDriver = "awslogs"
+            options = {
+              "awslogs-group"         = aws_cloudwatch_log_group.ecs_logs.name
+              "awslogs-region"        = var.aws_region
+              "awslogs-stream-prefix" = "flaskapp-sqs"
             }
+          }
           environment = [
             {
               name  = "QUEUE_URL"
@@ -192,7 +192,7 @@ module "ecs_cluster" {
         }
       }
 
-      subnet_ids = ["subnet-00b4c98869b996d86", "subnet-07fe08d5909e677db"] # Replace with your real VPC Subnets
+      subnet_ids       = ["subnet-00b4c98869b996d86", "subnet-07fe08d5909e677db"] # Replace with your real VPC Subnets
       assign_public_ip = true
 
       # FIXED: Define the security group rules natively for this service

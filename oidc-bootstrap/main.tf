@@ -41,17 +41,17 @@ data "aws_iam_policy_document" "github_oidc_assume_role" {
     condition {
       test     = "StringLike"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = [
+      values = [
         "repo:${var.github_org_or_username}*/${var.github_repository1_name}*:*",
         "repo:${var.github_org_or_username}*/${var.github_repository2_name}*:*"
-        ]
+      ]
     }
   }
 }
 
 #"principalId": "arn:aws:iam::255945442255:oidc-provider/token.actions.githubusercontent.com:sts.amazonaws.com:repo:shil5ram@287830560/coaching-18-app@1411771572:ref:refs/heads/main",
- #       "userName": "repo:shil5ram@287830560/coaching-18-app@1411771572:ref:refs/heads/main",
-      
+#       "userName": "repo:shil5ram@287830560/coaching-18-app@1411771572:ref:refs/heads/main",
+
 # Deployment Role assumed by your pipelines
 resource "aws_iam_role" "github_actions_role" {
   name               = "${var.environment}-github-actions-deployment-role"

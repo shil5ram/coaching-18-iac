@@ -11,7 +11,7 @@ variable "environment" {
 variable "github_org_or_username" {
   type        = string
   description = "Your personal GitHub username or Organization name"
- 
+
 }
 
 variable "github_repository1_name" {
