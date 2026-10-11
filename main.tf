@@ -1,5 +1,10 @@
 terraform {
   required_version = ">= 1.5.0"
+  backend "s3" {
+    bucket = "sctp-tfstate-ce13"
+    key    = "shil-ce18/flaskapp-ecs-cluster/terraform.tfstate"
+    region = "us-east-1"
+    }
   required_providers {
     aws = {
       source  = "hashicorp/aws"
