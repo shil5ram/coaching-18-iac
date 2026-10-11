@@ -7,8 +7,18 @@ on:
   push:
     branches:
       - main
+  # FIXED: This enables a manual execution button in the GitHub Actions tab
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Choose action to run (apply or destroy)'
+        required: true
+        default: 'apply'
+        type: choice
+        options:
+          - apply
+          - destroy
 
-# REQUIRED: These permissions must be configured explicitly to support OIDC token generation
 permissions:
   id-token: write
   contents: read
@@ -23,7 +33,6 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # OIDC Syntax: Swaps GitHub Token for temporary AWS access credentials
       - name: Configure AWS Credentials via OIDC
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -45,9 +54,16 @@ jobs:
         run: terraform validate
 
       - name: Terraform Plan
-        if: github.event_name == 'pull_request'
+        # Runs on PRs OR if someone triggers a manual 'apply' workflow run
+        if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.action == 'apply')
         run: terraform plan -no-color
 
       - name: Terraform Apply
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        # Runs automatically on main merges OR if someone selects 'apply' manually
+        if: (github.ref == 'refs/heads/main' && github.event_name == 'push') || (github.event_name == 'workflow_dispatch' && inputs.action == 'apply')
         run: terraform apply -auto-approve
+
+      # FIXED: New step that handles the teardown conditionally
+      - name: Terraform Destroy
+        if: github.event_name == 'workflow_dispatch' && inputs.action == 'destroy'
+        run: terraform destroy -auto-approve
