@@ -1,30 +1,42 @@
-name: Infrastructure CI/CD Pipeline
+name: "IaC CI/CD Pipeline"
 
 on:
   pull_request:
-    branches: [ main ]
-  workflow_dispatch: # Allows manual trigger for CD deployment
+    branches:
+      - main
+  push:
+    branches:
+      - main
 
-env:
-  AWS_REGION: us-east-1
+# REQUIRED: These permissions must be configured explicitly to support OIDC token generation
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
 
 jobs:
-  terraform-ci:
-    name: Terraform Lint & Plan
+  terraform:
+    name: "Terraform Execution"
     runs-on: ubuntu-latest
+    
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-
-      - name: Configure AWS Credentials
+      # OIDC Syntax: Swaps GitHub Token for temporary AWS access credentials
+      - name: Configure AWS Credentials via OIDC
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: arn:aws:iam::255945442255:role/production-github-actions-deployment-role # Replace with your real AWS Account ID after bootstrapping
+          aws-region: us-east-1
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.5.7"
+
+      - name: Terraform Format Check
+        run: terraform fmt -check
 
       - name: Terraform Init
         run: terraform init
@@ -33,30 +45,9 @@ jobs:
         run: terraform validate
 
       - name: Terraform Plan
-        run: terraform plan
-
-  terraform-cd:
-    name: Terraform Apply
-    needs: terraform-ci
-    # This ensures deployment only triggers manually via the Actions Tab
-    if: github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Terraform Init
-        run: terraform init
+        if: github.event_name == 'pull_request'
+        run: terraform plan -no-color
 
       - name: Terraform Apply
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         run: terraform apply -auto-approve

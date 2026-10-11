@@ -1,40 +1,53 @@
-import os
-import boto3
-from flask import Flask, request, jsonify
+name: "IaC CI/CD Pipeline"
 
-app = Flask(__name__)
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
 
+# REQUIRED: These permissions must be configured explicitly to support OIDC token generation
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
 
-def get_s3_client():
-    return boto3.client('s3')
+jobs:
+  terraform:
+    name: "Terraform Execution"
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
+      # OIDC Syntax: Swaps GitHub Token for temporary AWS access credentials
+      - name: Configure AWS Credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::123456789012:role/production-github-actions-deployment-role # Replace with your real AWS Account ID after bootstrapping
+          aws-region: us-east-1
 
-@app.route('/upload', methods=['POST'])
-def upload_file():
-    if 'file' not in request.files:
-        return jsonify({"error": "No file part in the request"}), 400
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.5.7"
 
-    file = request.files['file']
-    if file.filename in (None, ''):
-        return jsonify({"error": "No selected file"}), 400
+      - name: Terraform Format Check
+        run: terraform fmt -check
 
-    bucket_name = os.environ.get('S3_BUCKET_NAME')
-    if not bucket_name:
-        return jsonify({"error": "S3 bucket is not configured"}), 500
+      - name: Terraform Init
+        run: terraform init
 
-    try:
-        file.stream.seek(0)
-        s3_client = get_s3_client()
-        s3_client.upload_fileobj(file.stream, bucket_name, file.filename)
-        return jsonify({"message": f"Successfully uploaded {file.filename} to S3."}), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+      - name: Terraform Validate
+        run: terraform validate
 
+      - name: Terraform Plan
+        if: github.event_name == 'pull_request'
+        run: terraform plan -no-color
 
-@app.route('/health', methods=['GET'])
-def health():
-    return jsonify({"status": "healthy"}), 200
-
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+      - name: Terraform Apply
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: terraform apply -auto-approve
